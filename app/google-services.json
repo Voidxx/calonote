@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "37830013213",
+    "project_id": "calonote-d6663",
+    "storage_bucket": "calonote-d6663.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:37830013213:android:a6a9a57581261aa16671f4",
+        "android_client_info": {
+          "package_name": "com.example.calonote"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDNzz-D3hv2ecN7RBt4Tz3viRNUdVvLF-I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
