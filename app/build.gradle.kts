@@ -41,6 +41,12 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore:24.6.0")
     implementation("com.google.android.gms:play-services-auth:20.5.0")
 
+    implementation("com.google.android.material:material:1.8.0")
+
+    implementation ("com.squareup.okhttp3:okhttp:4.9.3")
+    implementation ("org.jmdns:jmdns:3.5.7")
+
+
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)

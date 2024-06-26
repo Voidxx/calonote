@@ -1,5 +1,6 @@
 package com.example.calonote.db
 
+import com.example.calonote.model.Meal
 import com.example.calonote.model.User
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -52,5 +53,17 @@ object FirebaseManager {
         } else {
             callback(null)
         }
+    }
+
+    fun addMeal(meal: Meal, callback: (Boolean, String) -> Unit) {
+        val db = FirebaseFirestore.getInstance()
+        db.collection("meals")
+            .add(meal)
+            .addOnSuccessListener {
+                callback(true, "Meal added successfully")
+            }
+            .addOnFailureListener { e ->
+                callback(false, e.message ?: "Failed to add meal")
+            }
     }
 }
