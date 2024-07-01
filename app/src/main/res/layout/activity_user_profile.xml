@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="@color/colorBackground">
+
+    <EditText
+        android:id="@+id/etHeight"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Height (m)"
+        android:inputType="numberDecimal"
+        android:textColorHint="@color/colorText" />
+
+    <EditText
+        android:id="@+id/etWeight"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Weight (kg)"
+        android:inputType="numberDecimal"
+        android:textColorHint="@color/colorText" />
+
+    <EditText
+        android:id="@+id/etAge"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Age"
+        android:inputType="number"
+        android:textColorHint="@color/colorText" />
+
+    <EditText
+        android:id="@+id/etDesiredWeight"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Desired Weight (kg)"
+        android:inputType="numberDecimal"
+        android:textColorHint="@color/colorText" />
+
+    <EditText
+        android:id="@+id/etActivityLevel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Activity Level (1-5)"
+        android:inputType="number"
+        android:textColorHint="@color/colorText" />
+
+    <Button
+        android:id="@+id/btnSave"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Save Profile"
+        android:textColor="@color/colorText"
+        android:background="@color/colorPrimary" />
+</LinearLayout>

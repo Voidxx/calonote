@@ -46,6 +46,10 @@ dependencies {
     implementation ("com.squareup.okhttp3:okhttp:4.9.3")
     implementation ("org.jmdns:jmdns:3.5.7")
 
+    implementation ("org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5")
+    implementation ("org.eclipse.paho:org.eclipse.paho.android.service:1.1.1")
+
+
 
 
     implementation(libs.androidx.core.ktx)

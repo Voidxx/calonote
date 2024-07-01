@@ -11,24 +11,21 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="Username"
-        android:inputType="text"
-        android:textColorHint="@color/colorText" />
+        android:inputType="text" />
 
     <EditText
         android:id="@+id/etEmail"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="Email"
-        android:inputType="textEmailAddress"
-        android:textColorHint="@color/colorText" />
+        android:inputType="textEmailAddress"/>
 
     <EditText
         android:id="@+id/etPassword"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="Password"
-        android:inputType="textPassword"
-        android:textColorHint="@color/colorText" />
+        android:inputType="textPassword" />
 
     <Button
         android:id="@+id/btnRegister"

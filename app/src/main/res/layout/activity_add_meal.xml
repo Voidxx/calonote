@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="@color/colorBackground">
+
+    <TextView
+        android:id="@+id/statusBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Disconnected"
+        android:textColor="@android:color/white"
+        android:background="@color/red"
+        android:padding="8dp"
+        android:textAlignment="center"/>
+    <TextView
+        android:id="@+id/tvStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:textColor="@android:color/black"
+        android:textSize="16sp"/>
+    <Button
+        android:id="@+id/btnConnectScale"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Connect Scale"
+        android:layout_marginTop="8dp"/>
+
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:visibility="gone"/>
+
+    <TextView
+        android:id="@+id/tvLoading"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/progressBar"
+        android:layout_centerHorizontal="true"
+        android:visibility="gone"
+        android:text="Trying to find the weight scale..."
+        android:paddingTop="16dp"/>
+
+    <Button
+        android:id="@+id/btnChangeWifi"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Change WiFi"
+        android:layout_marginTop="8dp"
+        android:visibility="gone"/>
+
+    <Button
+        android:id="@+id/btnCalibrate"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Calibrate Scale"
+        android:layout_marginTop="8dp"
+        android:visibility="gone"/>
+
+    <Button
+        android:id="@+id/btnCaptureFoodItem"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Capture Food Item"
+        android:layout_marginTop="16dp"/>
+
+
+
+</LinearLayout>
