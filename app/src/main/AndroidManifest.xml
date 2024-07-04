@@ -42,7 +42,6 @@
         <activity
             android:name=".controller.AddMealActivity"
             android:theme="@style/Theme.Calonote"
-            android:launchMode="singleTop"
             android:exported="false" />
 
         <activity
@@ -59,6 +58,13 @@
             android:name=".controller.CaptureFoodItemActivity"
             android:theme="@style/Theme.Calonote"
             android:exported="false" />
+
+        <activity android:name=".controller.WebViewActivity"
+            android:theme="@style/Theme.Calonote"
+            android:exported="false" />
+
+
+        <service android:name="org.eclipse.paho.android.service.MqttService" />
 
     </application>
 

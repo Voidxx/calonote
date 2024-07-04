@@ -11,7 +11,7 @@ android {
     defaultConfig {
         applicationId = "com.example.calonote"
         minSdk = 24
-        targetSdk = 34
+        targetSdk = 30
         versionCode = 1
         versionName = "1.0"
 
@@ -39,13 +39,14 @@ dependencies {
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-auth:22.0.0")
     implementation("com.google.firebase:firebase-firestore:24.6.0")
-    implementation("com.google.android.gms:play-services-auth:20.5.0")
 
     implementation("com.google.android.material:material:1.8.0")
 
     implementation ("com.squareup.okhttp3:okhttp:4.9.3")
     implementation ("org.jmdns:jmdns:3.5.7")
 
+    implementation ("androidx.localbroadcastmanager:localbroadcastmanager:1.0.0")
+    implementation ("androidx.appcompat:appcompat:1.2.0")
     implementation ("org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5")
     implementation ("org.eclipse.paho:org.eclipse.paho.android.service:1.1.1")
 
