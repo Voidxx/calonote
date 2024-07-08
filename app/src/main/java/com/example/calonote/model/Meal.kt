@@ -5,5 +5,6 @@ data class Meal(
     val userId: String = "",
     val name: String = "",
     val calories: Int = 0,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    val items: List<MealItem> = emptyList()
 )

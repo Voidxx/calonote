@@ -17,11 +17,8 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.calonote.R
-import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.example.calonote.client.MqttManager
 import kotlinx.coroutines.launch
-import org.eclipse.paho.android.service.MqttAndroidClient
-import org.json.JSONObject
 import java.io.IOException
 import java.io.InputStream
 import java.util.*
@@ -36,8 +33,9 @@ class AddMealActivity : AppCompatActivity() {
     private lateinit var progressBar: ProgressBar
     private lateinit var tvLoading: TextView
     private lateinit var tvStatus: TextView
-    private lateinit var mqttConfig: JSONObject
     private lateinit var mqttManager: MqttManager
+    private var isCameraConnected = false
+
 
     private var isConnected = false
     private lateinit var sharedPreferences: SharedPreferences
@@ -51,6 +49,7 @@ class AddMealActivity : AppCompatActivity() {
         setContentView(R.layout.activity_add_meal)
         sharedPreferences = getSharedPreferences("AddMealPrefs", Context.MODE_PRIVATE)
         isConnected = sharedPreferences.getBoolean("isConnected", false)
+        isCameraConnected = sharedPreferences.getBoolean("isCameraConnected", false)
         initializeViews()
         setUIEnabled(false)
         setListeners()
@@ -180,12 +179,77 @@ class AddMealActivity : AppCompatActivity() {
         lifecycleScope.launch {
             if (mqttManager.connect()) {
                 updateStatusText("Connected to MQTT broker")
+                isConnected = true
                 subscribeToPings()
+                connectToCamera()
             } else {
                 updateStatusText("Failed to connect to MQTT broker")
             }
         }
     }
+    private fun connectToCamera() {
+        updateStatusText("Connecting to camera...")
+        mqttManager.publish("esp32cam/connect", "connect")
+
+        var responseReceived = false
+
+        mqttManager.subscribe("esp32cam/status", 0) { _, message ->
+            responseReceived = true
+            when (message.toString()) {
+                "connected" -> {
+                    isCameraConnected = true
+                    updateConnectionStatus()
+                    updateStatusText("Connected to scale and camera")
+                    setUIEnabled(true)
+                }
+                else -> {
+                    updateStatusText("Unexpected camera status: ${message.toString()}")
+                }
+            }
+        }
+
+        Handler(Looper.getMainLooper()).postDelayed({
+            if (!responseReceived) {
+                updateStatusText("Camera in AP mode. Setting up Wi-Fi...")
+                setupCameraWifi()
+            }
+        }, 5000) // 5 second timeout
+    }
+
+    private fun setupCameraWifi() {
+        val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+        val cameraApSsid = "ESP32CAM_AP" // This should match the SSID in the ESP32-CAM code
+
+        if (wifiManager.connectionInfo.ssid.replace("\"", "") == cameraApSsid) {
+            // Already connected to camera AP, proceed with configuration
+            openCameraConfigWebView()
+        } else {
+            // Prompt user to connect to camera AP
+            AlertDialog.Builder(this)
+                .setTitle("Camera Wi-Fi Setup")
+                .setMessage("Please connect to the '$cameraApSsid' Wi-Fi network, then return to this app.")
+                .setPositiveButton("Open Wi-Fi Settings") { _, _ ->
+                    startActivity(Intent(Settings.ACTION_WIFI_SETTINGS))
+                }
+                .setNegativeButton("I'm Connected") { _, _ ->
+                    if (wifiManager.connectionInfo.ssid.replace("\"", "") == cameraApSsid) {
+                        openCameraConfigWebView()
+                    } else {
+                        updateStatusText("Not connected to camera AP. Please try again.")
+                    }
+                }
+                .show()
+        }
+    }
+
+    private fun openCameraConfigWebView() {
+        val intent = Intent(this, WebViewActivity::class.java).apply {
+            putExtra("url", "http://192.168.4.1") // This should match the IP address in the ESP32-CAM code
+            putExtra("configType", "camera")
+        }
+        startActivityForResult(intent, CAMERA_CONFIG_REQUEST)
+    }
+
 
     private fun subscribeToPings() {
         mqttManager.subscribe("esp32/ping", 0) { _, message ->
@@ -200,7 +264,7 @@ class AddMealActivity : AppCompatActivity() {
                 isConnected = true
                 updateConnectionStatus()
                 updateStatusText("Connected to ESP32")
-                setUIEnabled(true)
+                connectToCamera()
         }
     }
 
@@ -260,6 +324,17 @@ class AddMealActivity : AppCompatActivity() {
                     }
                 }
             }
+            CAMERA_CONFIG_REQUEST -> {
+                when (resultCode) {
+                    Activity.RESULT_OK -> {
+                        updateStatusText("Camera Wi-Fi configured. Reconnecting...")
+                        reconnectToOriginalNetwork()
+                    }
+                    else -> {
+                        updateStatusText("Camera configuration cancelled or failed.")
+                    }
+                }
+            }
         }
     }
 
@@ -275,6 +350,7 @@ class AddMealActivity : AppCompatActivity() {
     companion object {
         private const val ESP32_CONFIG_REQUEST = 1001
         private const val WIFI_SETTINGS_REQUEST_CODE = 1002
+        private const val CAMERA_CONFIG_REQUEST = 1003
     }
 
     private fun isConnectedToEsp32Ap(): Boolean {
@@ -285,8 +361,8 @@ class AddMealActivity : AppCompatActivity() {
 
 
     private fun updateConnectionStatus() {
-        if (isConnected) {
-            runOnUiThread() {
+        if (isConnected && isCameraConnected) {
+            runOnUiThread {
                 statusBar.text = "Connected"
                 statusBar.setBackgroundColor(resources.getColor(R.color.green))
                 btnConnectScale.visibility = View.GONE
@@ -294,7 +370,7 @@ class AddMealActivity : AppCompatActivity() {
                 btnCalibrate.visibility = View.VISIBLE
             }
         } else {
-            runOnUiThread() {
+            runOnUiThread {
                 statusBar.text = "Disconnected"
                 statusBar.setBackgroundColor(resources.getColor(R.color.red))
                 btnConnectScale.visibility = View.VISIBLE
@@ -303,11 +379,10 @@ class AddMealActivity : AppCompatActivity() {
             }
         }
         with(sharedPreferences.edit()) {
-            putBoolean("isConnected", isConnected)
+            putBoolean("isConnected", isConnected && isCameraConnected)
             apply()
         }
     }
-
     private fun setUIEnabled(enabled: Boolean) {
         btnCaptureFoodItem.isEnabled = enabled
     }

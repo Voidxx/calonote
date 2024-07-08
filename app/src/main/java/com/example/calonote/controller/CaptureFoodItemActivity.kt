@@ -10,18 +10,10 @@ import com.example.calonote.R
 import com.example.calonote.client.MqttManager
 import com.example.calonote.db.FirebaseManager
 import com.example.calonote.model.Meal
-import kotlinx.coroutines.Dispatchers
+import com.example.calonote.model.MealItem
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import org.eclipse.paho.android.service.MqttAndroidClient
 import org.eclipse.paho.client.mqttv3.*
 import org.json.JSONObject
-import java.io.InputStream
-import java.security.KeyStore
-import java.security.cert.CertificateFactory
-import javax.net.ssl.SSLContext
-import javax.net.ssl.SSLSocketFactory
-import javax.net.ssl.TrustManagerFactory
 
 class CaptureFoodItemActivity : AppCompatActivity() {
     private lateinit var btnCapture: Button
@@ -30,12 +22,8 @@ class CaptureFoodItemActivity : AppCompatActivity() {
     private lateinit var tvCalories: TextView
     private lateinit var btnAddAnotherItem: Button
     private lateinit var btnFinishMeal: Button
-    private var isConnected: Boolean = false
-    private val mealItems = mutableListOf<Pair<String, Int>>()
-    private lateinit var mqttClient: MqttAndroidClient
-    private lateinit var mqttConfig: JSONObject
     private lateinit var mqttManager: MqttManager
-
+    private val mealItems = mutableListOf<MealItem>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -62,49 +50,58 @@ class CaptureFoodItemActivity : AppCompatActivity() {
         btnFinishMeal.setOnClickListener { finishMeal() }
     }
 
-
     private fun connectMqtt() {
         lifecycleScope.launch {
             val connected = mqttManager.connect()
             if (connected) {
                 Toast.makeText(this@CaptureFoodItemActivity, "Connected to MQTT broker", Toast.LENGTH_SHORT).show()
-                subscribeToWeightTopic()
+                subscribeToTopics()
             } else {
                 Toast.makeText(this@CaptureFoodItemActivity, "Failed to connect to MQTT broker", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
-    private fun subscribeToWeightTopic() {
-        mqttManager.subscribe("esp32/weight", 0) { topic, message ->
-            when (topic) {
-                "esp32/weight" -> handleWeightMessage(message.toString())
-            }
+    private fun subscribeToTopics() {
+        mqttManager.subscribe("esp32/weight", 0) { _, message ->
+            handleWeightMessage(message.toString())
+        }
+        mqttManager.subscribe("model/prediction", 0) { _, message ->
+            handlePredictionMessage(message.toString())
         }
     }
 
     private fun captureFood() {
         mqttManager.publish("esp32/weight_request", "request")
+        mqttManager.publish("esp32cam/capture", "capture")
     }
+
     private fun handleWeightMessage(weightStr: String?) {
         runOnUiThread {
             tvWeight.text = "Weight: ${weightStr}g"
-            // Here you would typically use machine learning to identify the food and estimate calories
-            // For this example, we'll just use dummy data
-            val foodName = "Apple"
-            val calories = 95
-            tvFoodName.text = "Food: $foodName"
-            tvCalories.text = "Calories: $calories"
-
-            mealItems.add(Pair(foodName, calories))
-            updateUI()
         }
     }
 
-    private fun addAnotherItem() {
-        tvWeight.text = ""
-        tvFoodName.text = ""
-        tvCalories.text = ""
+    private fun handlePredictionMessage(predictionStr: String) {
+        runOnUiThread {
+            try {
+                val json = JSONObject(predictionStr)
+                val predictedClass = json.getString("predicted_class")
+                val confidence = json.getDouble("confidence")
+
+                tvFoodName.text = "Food: $predictedClass"
+                tvCalories.text = "Confidence: ${String.format("%.2f", confidence * 100)}%"
+
+                // Parse weight from tvWeight
+                val weightStr = tvWeight.text.toString()
+                val weight = weightStr.substringBefore("g").substringAfter(": ").toFloatOrNull() ?: 0f
+
+                mealItems.add(MealItem(predictedClass, weight))
+                updateUI()
+            } catch (e: Exception) {
+                Toast.makeText(this, "Error parsing prediction: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private fun finishMeal() {
@@ -115,12 +112,14 @@ class CaptureFoodItemActivity : AppCompatActivity() {
             }
 
             val mealName = "Meal ${System.currentTimeMillis()}"
-            val totalCalories = mealItems.sumOf { it.second }
+            // Calorie calculation left out for now
+            val totalCalories = 0 // This will be calculated later
 
             val meal = Meal(
                 userId = user.uid,
                 name = mealName,
-                calories = totalCalories
+                calories = totalCalories,
+                items = mealItems.toList() // Convert mutableList to List
             )
 
             FirebaseManager.addMeal(meal) { success, message ->
@@ -136,6 +135,13 @@ class CaptureFoodItemActivity : AppCompatActivity() {
         }
     }
 
+    private fun addAnotherItem() {
+        tvWeight.text = ""
+        tvFoodName.text = ""
+        tvCalories.text = ""
+    }
+
+
     private fun updateUI() {
         btnAddAnotherItem.isEnabled = mealItems.isNotEmpty()
         btnFinishMeal.isEnabled = mealItems.isNotEmpty()
@@ -143,5 +149,6 @@ class CaptureFoodItemActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        mqttManager.disconnect()
     }
 }
