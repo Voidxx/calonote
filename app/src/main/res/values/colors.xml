@@ -1,10 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#F44336</color> <!-- Red -->
-    <color name="colorPrimaryDark">#C62828</color>
-    <color name="colorAccent">#FFC107</color> <!-- Yellow -->
-    <color name="colorBackground">#FFF3E0</color> <!-- Light Orange -->
-    <color name="colorText">#000000</color> <!-- Black -->
-    <color name="green">#4CAF50</color>
-    <color name="red">#F44336</color>
+    <color name="colorPrimary">#6200EE</color>
+    <color name="colorPrimaryDark">#3700B3</color>
+    <color name="colorPrimaryLight">#BB86FC</color>
+    <color name="colorAccent">#03DAC5</color>
+    <color name="colorAccentDark">#018786</color>
+    <color name="colorAccentLight">#66EFCB</color>
+    <color name="colorBackgroundDark">#121212</color>
+    <color name="colorSurfaceDark">#1E1E1E</color>
+    <color name="colorTextSecondary">#757575</color>
+    <color name="colorTextSecondaryDark">#BBBBBB</color>
+    <color name="red">#FF0000</color>
+    <color name="green">#AAFF00</color>
+
+    <color name="colorCalories">#FF5722</color>
+    <color name="colorProtein">#4CAF50</color>
+    <color name="colorFat">#FFC107</color>
+    <color name="colorCarbs">#2196F3</color>
+    <color name="colorVitamins">#9C27B0</color>
 </resources>
