@@ -4,7 +4,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="16dp"
-    android:background="@color/colorBackground">
+    android:background="@color/colorBackgroundDark">
 
     <TextView
         android:id="@+id/statusBar"
@@ -20,7 +20,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:textColor="@android:color/black"
+        android:textColor="@color/colorTextSecondaryDark"
         android:textSize="16sp"/>
     <Button
         android:id="@+id/btnConnectScale"
@@ -43,6 +43,7 @@
         android:layout_below="@id/progressBar"
         android:layout_centerHorizontal="true"
         android:visibility="gone"
+        android:textColor="@color/colorTextSecondaryDark"
         android:text="Trying to find the weight scale..."
         android:paddingTop="16dp"/>
 
