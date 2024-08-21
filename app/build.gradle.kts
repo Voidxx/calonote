@@ -39,7 +39,8 @@ dependencies {
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-auth:22.0.0")
     implementation("com.google.firebase:firebase-firestore:24.6.0")
-
+    implementation ("com.github.bumptech.glide:glide:4.12.0")
+    annotationProcessor ("com.github.bumptech.glide:compiler:4.12.0")
     implementation("com.google.android.material:material:1.8.0")
 
     implementation ("com.squareup.okhttp3:okhttp:4.9.3")
