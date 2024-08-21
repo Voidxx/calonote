@@ -117,6 +117,24 @@ class MqttManager(private val context: Context) {
         }
     }
 
+    fun unsubscribe(topic: String) {
+        try {
+            val token = mqttClient.unsubscribe(topic)
+            token.setActionCallback(object : IMqttActionListener {
+                override fun onSuccess(asyncActionToken: IMqttToken?) {
+                    Log.d("MqttManager", "Unsubscribed from $topic")
+                }
+
+                override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
+                    Log.e("MqttManager", "Failed to unsubscribe from $topic", exception)
+                }
+            })
+            token.actionCallback = token.actionCallback
+        } catch (e: MqttException) {
+            Log.e("MqttManager", "Failed to unsubscribe from $topic", e)
+        }
+    }
+
     fun publish(topic: String, message: String) {
         try {
             val mqttMessage = MqttMessage(message.toByteArray())
