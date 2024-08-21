@@ -2,6 +2,8 @@ package com.example.calonote.controller
 
 import android.app.Activity
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.appcompat.app.AppCompatActivity
@@ -38,7 +40,9 @@ class WebViewActivity : AppCompatActivity() {
     }
 
     override fun onBackPressed() {
-        setResult(Activity.RESULT_CANCELED)
-        super.onBackPressed()
+        setResult(Activity.RESULT_OK)
+        Handler(Looper.getMainLooper()).postDelayed({
+            finish()
+        }, 500) // Delay to ensure the back press is properly handled
     }
 }
