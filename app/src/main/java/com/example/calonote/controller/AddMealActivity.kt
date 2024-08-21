@@ -23,10 +23,9 @@ import java.io.IOException
 import java.io.InputStream
 import java.util.*
 
-
 class AddMealActivity : AppCompatActivity() {
     private lateinit var statusBar: TextView
-    private lateinit var btnConnectScale: Button
+    private lateinit var btnConnectDevices: Button
     private lateinit var btnChangeWifi: Button
     private lateinit var btnCalibrate: Button
     private lateinit var btnCaptureFoodItem: Button
@@ -34,32 +33,23 @@ class AddMealActivity : AppCompatActivity() {
     private lateinit var tvLoading: TextView
     private lateinit var tvStatus: TextView
     private lateinit var mqttManager: MqttManager
+
     private var isCameraConnected = false
-
-
-    private var isConnected = false
-    private lateinit var sharedPreferences: SharedPreferences
-
+    private var isScaleConnected = false
     private lateinit var wifiManager: WifiManager
-    private var userSsid: String? = null
-    private var userPassword: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_add_meal)
-        sharedPreferences = getSharedPreferences("AddMealPrefs", Context.MODE_PRIVATE)
-        isConnected = sharedPreferences.getBoolean("isConnected", false)
-        isCameraConnected = sharedPreferences.getBoolean("isCameraConnected", false)
         initializeViews()
         setUIEnabled(false)
         setListeners()
         mqttManager = MqttManager(this)
-
     }
 
     private fun initializeViews() {
         statusBar = findViewById(R.id.statusBar)
-        btnConnectScale = findViewById(R.id.btnConnectScale)
+        btnConnectDevices = findViewById(R.id.btnConnectScale)
         btnChangeWifi = findViewById(R.id.btnChangeWifi)
         btnCalibrate = findViewById(R.id.btnCalibrate)
         btnCaptureFoodItem = findViewById(R.id.btnCaptureFoodItem)
@@ -71,59 +61,144 @@ class AddMealActivity : AppCompatActivity() {
 
     private fun updateStatusText(text: String) {
         if (!isFinishing && !isDestroyed) {
-            runOnUiThread {
-                tvStatus.text = text
-            }
+            runOnUiThread { tvStatus.text = text }
         }
     }
 
     private fun setListeners() {
-        btnConnectScale.setOnClickListener { connectMqtt() }
+        btnConnectDevices.setOnClickListener { connectToDevices() }
         btnChangeWifi.setOnClickListener { changeWifiCredentials() }
         btnCalibrate.setOnClickListener { calibrateScale() }
         btnCaptureFoodItem.setOnClickListener { startCaptureFoodItemActivity() }
     }
 
-
-    private fun configureEsp32() {
-        wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-        userSsid = getProperty("USER_SSID")
-        userPassword = getProperty("USER_PASSWORD")
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            // For Android 10 and above, we can't programmatically connect to Wi-Fi networks
-            promptManualWifiConnection()
-        } else {
-            connectToEsp32Ap()
+    private fun connectToDevices() {
+        isCameraConnected = false
+        isScaleConnected = false
+        lifecycleScope.launch {
+            if (mqttManager.connect()) {
+                updateStatusText("Connected to MQTT broker")
+                subscribeToEsp32()
+            } else {
+                updateStatusText("Failed to connect to MQTT broker")
+            }
         }
     }
 
-    private fun connectToEsp32Ap() {
-        val conf = WifiConfiguration()
-        conf.SSID = "\"${getProperty("ESP32_AP_SSID")}\""
-        conf.preSharedKey = "\"${getProperty("ESP32_AP_PASSWORD")}\""
+    private fun subscribeToEsp32() {
+        isScaleConnected = false
 
+        mqttManager.subscribe("esp32/ping", 1) { _, message ->
+            handleEsp32PingResponse(message.toString())
+        }
+        mqttManager.publish("esp32/ping", "ping")
+        updateStatusText("Checking ESP32 reachability...")
+
+        Handler(Looper.getMainLooper()).postDelayed({
+            if (!isScaleConnected) {
+                handleDeviceUnreachable("esp32")
+            } else {
+                isCameraConnected = false
+                mqttManager.unsubscribe("esp32/ping")
+                subscribeToEsp32Cam()
+            }
+        }, 5000)
+    }
+
+    private fun subscribeToEsp32Cam() {
+
+        mqttManager.subscribe("esp32cam/ping", 1) { _, message ->
+            handleEsp32CamPingResponse(message.toString())
+        }
+        mqttManager.publish("esp32cam/ping", "ping")
+        updateStatusText("Checking ESP32Cam reachability...")
+
+        Handler(Looper.getMainLooper()).postDelayed({
+            if (!isCameraConnected) {
+                handleDeviceUnreachable("esp32cam")
+            } else {
+                mqttManager.unsubscribe("esp32cam/ping")
+                setUIEnabled(true)
+            }
+        }, 10000) // 10 second timeout
+    }
+
+    private fun handleEsp32PingResponse(message: String) {
+        if (message == "pong") {
+            isScaleConnected = true
+            updateStatusText("Connected to ESP32, Trying to connect to Cam...")
+        }
+    }
+
+    private fun handleEsp32CamPingResponse(message: String) {
+        if (message == "pong") {
+            isCameraConnected = true
+            updateStatusText("Connected to ESP32Cam")
+            updateConnectionStatus()
+        }
+    }
+    private fun handleDeviceUnreachable(device: String) {
+        updateStatusText("$device not reachable. Setting up Wi-Fi...")
+        when (device) {
+            "esp32cam" -> configureDevice(getProperty("ESP32CAM_AP_SSID"), getProperty("ESP32CAM_AP_PASSWORD"), getProperty("ESP32_AP_URL"), CAMERA_CONFIG_REQUEST)
+            "esp32" -> configureDevice(getProperty("ESP32_AP_SSID"), getProperty("ESP32_AP_PASSWORD"), getProperty("ESP32_AP_URL"), ESP32_CONFIG_REQUEST)
+        }
+    }
+
+    private fun updateConnectionStatus() {
+        if (isScaleConnected && isCameraConnected) {
+            runOnUiThread {
+                statusBar.text = "Connected"
+                statusBar.setBackgroundColor(resources.getColor(R.color.green))
+                btnConnectDevices.visibility = View.GONE
+                btnChangeWifi.visibility = View.VISIBLE
+                btnCalibrate.visibility = View.VISIBLE
+            }
+        } else {
+            runOnUiThread {
+                statusBar.text = "Disconnected"
+                statusBar.setBackgroundColor(resources.getColor(R.color.red))
+                btnConnectDevices.visibility = View.VISIBLE
+                btnChangeWifi.visibility = View.GONE
+                btnCalibrate.visibility = View.GONE
+            }
+        }
+    }
+    private fun configureDevice(ssid: String, password: String, url: String, configRequestCode: Int) {
+        wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            promptManualWifiConnection(ssid, password)
+        } else {
+            connectToAP(ssid, password) {
+                openDeviceConfigurationWebsite(url, configRequestCode)
+            }
+        }
+    }
+
+    private fun connectToAP(apSsid: String, apPassword: String, onSuccess: () -> Unit) {
+        val conf = WifiConfiguration().apply {
+            SSID = "\"$apSsid\""
+            preSharedKey = "\"$apPassword\""
+        }
         val networkId = wifiManager.addNetwork(conf)
         wifiManager.disconnect()
         wifiManager.enableNetwork(networkId, true)
         wifiManager.reconnect()
 
-        // Wait for connection to be established
         Handler(Looper.getMainLooper()).postDelayed({
-            if (wifiManager.connectionInfo.ssid == "\"${getProperty("ESP32_AP_SSID")}\"") {
-                openEsp32ConfigurationWebsite()
+            if (wifiManager.connectionInfo.ssid == "\"$apSsid\"") {
+                onSuccess()
             } else {
-                promptManualWifiConnection()
+                promptManualWifiConnection(apSsid, apPassword)
             }
         }, 5000) // Wait 5 seconds for connection
     }
 
-    private fun promptManualWifiConnection() {
+    private fun promptManualWifiConnection(ssid: String, password: String) {
         AlertDialog.Builder(this)
             .setTitle("Manual Wi-Fi Connection Required")
-            .setMessage("Please connect to the '${getProperty("ESP32_AP_SSID")}' Wi-Fi network manually. " +
-                    "The password is '${getProperty("ESP32_AP_PASSWORD")}'. " +
-                    "After connecting, return to this app.")
+            .setMessage("Please connect to the '$ssid' Wi-Fi network manually. The password is '$password'. After connecting, return to this app.")
             .setPositiveButton("Open Wi-Fi Settings") { _, _ ->
                 startActivityForResult(Intent(Settings.ACTION_WIFI_SETTINGS), WIFI_SETTINGS_REQUEST_CODE)
             }
@@ -138,25 +213,10 @@ class AddMealActivity : AppCompatActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             promptManualReconnection(userSsid)
         } else {
-            // Attempt to reconnect to the original network
-            val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-            val conf = WifiConfiguration()
-            conf.SSID = "\"$userSsid\""
-            conf.preSharedKey = "\"$userPassword\""
-            val networkId = wifiManager.addNetwork(conf)
-            wifiManager.disconnect()
-            wifiManager.enableNetwork(networkId, true)
-            wifiManager.reconnect()
-
-            // Check if reconnection was successful
-            Handler(Looper.getMainLooper()).postDelayed({
-                if (wifiManager.connectionInfo.ssid == "\"$userSsid\"") {
-                    updateStatusText("Reconnected to original network. Retrying connection...")
-                    connectMqtt()
-                } else {
-                    promptManualReconnection(userSsid)
-                }
-            }, 5000)
+            connectToAP(userSsid, userPassword) {
+                updateStatusText("Reconnected to original network. Retrying connection...")
+                connectToDevices()
+            }
         }
     }
 
@@ -169,260 +229,56 @@ class AddMealActivity : AppCompatActivity() {
             }
             .setNegativeButton("I'm Reconnected") { _, _ ->
                 updateStatusText("Retrying connection...")
-                connectMqtt()
+                connectToDevices()
             }
             .setCancelable(false)
             .show()
     }
 
-    private fun connectMqtt() {
-        lifecycleScope.launch {
-            if (mqttManager.connect()) {
-                updateStatusText("Connected to MQTT broker")
-                isConnected = true
-                subscribeToPings()
-                connectToCamera()
-            } else {
-                updateStatusText("Failed to connect to MQTT broker")
-            }
-        }
-    }
-    private fun connectToCamera() {
-        updateStatusText("Connecting to camera...")
-        mqttManager.publish("esp32cam/connect", "connect")
-
-        var responseReceived = false
-
-        mqttManager.subscribe("esp32cam/status", 0) { _, message ->
-            responseReceived = true
-            when (message.toString()) {
-                "connected" -> {
-                    isCameraConnected = true
-                    updateConnectionStatus()
-                    updateStatusText("Connected to scale and camera")
-                    setUIEnabled(true)
-                }
-                else -> {
-                    updateStatusText("Unexpected camera status: ${message.toString()}")
-                }
-            }
-        }
-
-        Handler(Looper.getMainLooper()).postDelayed({
-            if (!responseReceived) {
-                updateStatusText("Camera in AP mode. Setting up Wi-Fi...")
-                setupCameraWifi()
-            }
-        }, 5000) // 5 second timeout
-    }
-
-    private fun setupCameraWifi() {
-        val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-        val cameraApSsid = "ESP32CAM_AP" // This should match the SSID in the ESP32-CAM code
-
-        if (wifiManager.connectionInfo.ssid.replace("\"", "") == cameraApSsid) {
-            // Already connected to camera AP, proceed with configuration
-            openCameraConfigWebView()
-        } else {
-            // Prompt user to connect to camera AP
-            AlertDialog.Builder(this)
-                .setTitle("Camera Wi-Fi Setup")
-                .setMessage("Please connect to the '$cameraApSsid' Wi-Fi network, then return to this app.")
-                .setPositiveButton("Open Wi-Fi Settings") { _, _ ->
-                    startActivity(Intent(Settings.ACTION_WIFI_SETTINGS))
-                }
-                .setNegativeButton("I'm Connected") { _, _ ->
-                    if (wifiManager.connectionInfo.ssid.replace("\"", "") == cameraApSsid) {
-                        openCameraConfigWebView()
-                    } else {
-                        updateStatusText("Not connected to camera AP. Please try again.")
-                    }
-                }
-                .show()
-        }
-    }
-
-    private fun openCameraConfigWebView() {
+    private fun openDeviceConfigurationWebsite(url: String, requestCode: Int) {
         val intent = Intent(this, WebViewActivity::class.java).apply {
-            putExtra("url", "http://192.168.4.1") // This should match the IP address in the ESP32-CAM code
-            putExtra("configType", "camera")
+            putExtra("url", url)
         }
-        startActivityForResult(intent, CAMERA_CONFIG_REQUEST)
-    }
-
-
-    private fun subscribeToPings() {
-        mqttManager.subscribe("esp32/ping", 0) { _, message ->
-            handlePing(message.toString())
-        }
-        updateStatusText("Connected and listening for ESP32")
-        checkArduinoReachability()
-    }
-
-    private fun handlePing(message: String?) {
-        if (message == "pong") {
-                isConnected = true
-                updateConnectionStatus()
-                updateStatusText("Connected to ESP32")
-                connectToCamera()
-        }
-    }
-
-    private fun checkArduinoReachability() {
-        mqttManager.publish("android/ping", "ping")
-        updateStatusText("Checking ESP32 reachability...")
-
-        Handler(Looper.getMainLooper()).postDelayed({
-            if (!isConnected) {
-                updateStatusText("ESP32 not reachable.")
-                promptEsp32Configuration()
-            }
-        }, 5000) // 5 second timeout
-    }
-    private fun promptEsp32Configuration() {
-        AlertDialog.Builder(this)
-            .setTitle("ESP32 Configuration Required")
-            .setMessage("The ESP32 is not reachable. Would you like to configure it now?")
-            .setPositiveButton("Yes") { _, _ ->
-                configureEsp32()
-            }
-            .setNegativeButton("No") { dialog, _ ->
-                dialog.dismiss()
-            }
-            .show()
-    }
-    private fun openEsp32ConfigurationWebsite() {
-        val esp32ConfigUrl = getProperty("ESP32_AP_URL")
-        val intent = Intent(this, WebViewActivity::class.java).apply {
-            putExtra("url", esp32ConfigUrl)
-        }
-        startActivityForResult(intent, ESP32_CONFIG_REQUEST)
+        startActivityForResult(intent, requestCode)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         when (requestCode) {
             WIFI_SETTINGS_REQUEST_CODE -> {
-                if (isConnectedToEsp32Ap()) {
-                    openEsp32ConfigurationWebsite()
+                if (isConnectedToDeviceAp()) {
+                    openDeviceConfigurationWebsite(getProperty("ESP32_AP_URL"), ESP32_CONFIG_REQUEST)
                 } else {
-                    promptManualWifiConnection()
+                    promptManualWifiConnection(getProperty("ESP32_AP_SSID"), getProperty("ESP32_AP_PASSWORD"))
                 }
             }
-            ESP32_CONFIG_REQUEST -> {
-                when (resultCode) {
-                    Activity.RESULT_OK -> {
+            ESP32_CONFIG_REQUEST, CAMERA_CONFIG_REQUEST -> {
+                if (resultCode == Activity.RESULT_OK) {
+                    reconnectToOriginalNetwork()
+                } else {
+                    updateStatusText("Configuration failed. Retrying...")
+                    Handler(Looper.getMainLooper()).postDelayed({
                         reconnectToOriginalNetwork()
-                    }
-                    Activity.RESULT_CANCELED, Activity.RESULT_FIRST_USER -> {
-                        // User pressed back or exited the web activity
-                        handleWebActivityExit()
-                    }
-                    else -> {
-                        updateStatusText("ESP32 configuration cancelled or failed.")
-                        handleWebActivityExit()
-                    }
-                }
-            }
-            CAMERA_CONFIG_REQUEST -> {
-                when (resultCode) {
-                    Activity.RESULT_OK -> {
-                        updateStatusText("Camera Wi-Fi configured. Reconnecting...")
-                        reconnectToOriginalNetwork()
-                    }
-                    else -> {
-                        updateStatusText("Camera configuration cancelled or failed.")
-                    }
+                    }, 2000) // Retry after 2 seconds
                 }
             }
         }
     }
 
-    private fun handleWebActivityExit() {
-        AlertDialog.Builder(this)
-            .setTitle("Configuration Incomplete")
-            .setMessage("Would you like to reconnect to your original Wi-Fi network?")
-            .setPositiveButton("Yes") { _, _ -> reconnectToOriginalNetwork() }
-            .setNegativeButton("No") { _, _ -> updateStatusText("Please connect to a Wi-Fi network manually.") }
-            .setCancelable(false)
-            .show()
-    }
-    companion object {
-        private const val ESP32_CONFIG_REQUEST = 1001
-        private const val WIFI_SETTINGS_REQUEST_CODE = 1002
-        private const val CAMERA_CONFIG_REQUEST = 1003
+    private fun isConnectedToDeviceAp(): Boolean {
+        val ssid = wifiManager.connectionInfo.ssid
+        return ssid == "\"${getProperty("ESP32_AP_SSID")}\"" || ssid == "\"${getProperty("ESP32CAM_AP_SSID")}\""
     }
 
-    private fun isConnectedToEsp32Ap(): Boolean {
-        val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-        val esp32ApSsid = getProperty("ESP32_AP_SSID")
-        return wifiManager.connectionInfo.ssid.replace("\"", "") == esp32ApSsid
+    private fun startCaptureFoodItemActivity() {
+        val intent = Intent(this, CaptureFoodItemActivity::class.java)
+        startActivity(intent)
     }
 
-
-    private fun updateConnectionStatus() {
-        if (isConnected && isCameraConnected) {
-            runOnUiThread {
-                statusBar.text = "Connected"
-                statusBar.setBackgroundColor(resources.getColor(R.color.green))
-                btnConnectScale.visibility = View.GONE
-                btnChangeWifi.visibility = View.VISIBLE
-                btnCalibrate.visibility = View.VISIBLE
-            }
-        } else {
-            runOnUiThread {
-                statusBar.text = "Disconnected"
-                statusBar.setBackgroundColor(resources.getColor(R.color.red))
-                btnConnectScale.visibility = View.VISIBLE
-                btnChangeWifi.visibility = View.GONE
-                btnCalibrate.visibility = View.GONE
-            }
-        }
-        with(sharedPreferences.edit()) {
-            putBoolean("isConnected", isConnected && isCameraConnected)
-            apply()
-        }
-    }
     private fun setUIEnabled(enabled: Boolean) {
-        btnCaptureFoodItem.isEnabled = enabled
-    }
-
-    private fun changeWifiCredentials() {
-        val ssidEditText = EditText(this)
-        val passwordEditText = EditText(this)
-
-        AlertDialog.Builder(this)
-            .setTitle("Change WiFi Credentials")
-            .setView(LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                addView(TextView(context).apply { text = "SSID" })
-                addView(ssidEditText)
-                addView(TextView(context).apply { text = "Password" })
-                addView(passwordEditText)
-            })
-            .setPositiveButton("Submit") { _, _ ->
-                val newSsid = ssidEditText.text.toString()
-                val newPassword = passwordEditText.text.toString()
-                sendNewWifiCredentials(newSsid, newPassword)
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
-    }
-
-    private fun sendNewWifiCredentials(ssid: String, password: String) {
-        mqttManager.publish("esp32/wifi_config", "$ssid,$password")
-        updateStatusText("Sent new WiFi credentials to ESP32")
-
-        mqttManager.subscribe("esp32/wifi_config_result", 0) { topic, message ->
-            val result = message.toString()
-            updateStatusText(result)
-            if (result.contains("Restarting")) {
-                Handler(Looper.getMainLooper()).postDelayed({
-                    isConnected = false
-                    updateConnectionStatus()
-                    connectMqtt()
-                }, 10000) // Wait 10 seconds before reconnecting
-            }
+        runOnUiThread {
+            btnCalibrate.isEnabled = enabled
+            btnCaptureFoodItem.isEnabled = enabled
         }
     }
 
@@ -461,24 +317,67 @@ class AddMealActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun startCaptureFoodItemActivity() {
-        val intent = Intent(this, CaptureFoodItemActivity::class.java)
-        intent.putExtra("isConnected", isConnected)
-        startActivity(intent)
+    private fun changeWifiCredentials() {
+        val ssidEditText = EditText(this)
+        val passwordEditText = EditText(this)
+
+        AlertDialog.Builder(this)
+            .setTitle("Change WiFi Credentials")
+            .setView(LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                addView(TextView(context).apply { text = "SSID" })
+                addView(ssidEditText)
+                addView(TextView(context).apply { text = "Password" })
+                addView(passwordEditText)
+            })
+            .setPositiveButton("Submit") { _, _ ->
+                val newSsid = ssidEditText.text.toString()
+                val newPassword = passwordEditText.text.toString()
+                sendNewWifiCredentials(newSsid, newPassword)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-    }
-
-    private fun getProperty(key: String): String {
-        val properties = Properties()
-        try {
-            val inputStream: InputStream = assets.open("config.properties")
-            properties.load(inputStream)
-        } catch (e: IOException) {
-            e.printStackTrace()
+    private fun sendNewWifiCredentials(ssid: String, password: String) {
+        mqttManager.publish("esp32/wifi_config", "$ssid,$password")
+        updateStatusText("Sent new WiFi credentials to ESP32")
+        mqttManager.publish("esp32cam/wifi_config", "$ssid,$password")
+        updateStatusText("Sent new WiFi credentials to ESP32")
+        isScaleConnected = false
+        isCameraConnected = false
+        mqttManager.subscribe("esp32/wifi_config_result", 0) { topic, message ->
+            val result = message.toString()
+            updateStatusText(result)
+            if (result.contains("Restarting")) {
+                Handler(Looper.getMainLooper()).postDelayed({
+                    updateConnectionStatus()
+                    connectToDevices()
+                }, 5000) // Wait 10 seconds before reconnecting
+            }
         }
-        return properties.getProperty(key) ?: ""
+    }
+    private fun getProperty(propertyName: String): String {
+        val properties = Properties().apply {
+            val inputStream: InputStream = assets.open("config.properties")
+            load(inputStream)
+        }
+        return properties.getProperty(propertyName)
+    }
+
+
+    private fun handleWebActivityExit() {
+        AlertDialog.Builder(this)
+            .setTitle("Configuration Incomplete")
+            .setMessage("Would you like to reconnect to your original Wi-Fi network?")
+            .setPositiveButton("Yes") { _, _ -> reconnectToOriginalNetwork() }
+            .setNegativeButton("No") { _, _ -> updateStatusText("Please connect to a Wi-Fi network manually.") }
+            .setCancelable(false)
+            .show()
+    }
+    companion object {
+        const val WIFI_SETTINGS_REQUEST_CODE = 1001
+        const val ESP32_CONFIG_REQUEST = 1002
+        const val CAMERA_CONFIG_REQUEST = 1003
     }
 }
