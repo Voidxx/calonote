@@ -63,6 +63,11 @@
             android:theme="@style/Theme.Calonote"
             android:exported="false" />
 
+        <activity android:name=".controller.InitialQuestionnaireActivity"
+            android:theme="@style/Theme.Calonote"
+            android:exported="false" />
+
+
 
         <service android:name="org.eclipse.paho.android.service.MqttService" />
 
