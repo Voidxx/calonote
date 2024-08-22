@@ -128,7 +128,6 @@ class CalorieHistoryActivity : AppCompatActivity() {
             }
 
             itemView.setOnClickListener {
-                // You can add a click listener here to show more details about the food item
                 Toast.makeText(itemView.context, "Clicked on ${item.name}", Toast.LENGTH_SHORT).show()
             }
         }

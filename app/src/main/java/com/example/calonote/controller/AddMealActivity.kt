@@ -365,16 +365,6 @@ class AddMealActivity : AppCompatActivity() {
         return properties.getProperty(propertyName)
     }
 
-
-    private fun handleWebActivityExit() {
-        AlertDialog.Builder(this)
-            .setTitle("Configuration Incomplete")
-            .setMessage("Would you like to reconnect to your original Wi-Fi network?")
-            .setPositiveButton("Yes") { _, _ -> reconnectToOriginalNetwork() }
-            .setNegativeButton("No") { _, _ -> updateStatusText("Please connect to a Wi-Fi network manually.") }
-            .setCancelable(false)
-            .show()
-    }
     companion object {
         const val WIFI_SETTINGS_REQUEST_CODE = 1001
         const val ESP32_CONFIG_REQUEST = 1002
