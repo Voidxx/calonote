@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.util.Base64
 import android.util.Log
 import android.widget.Button
+import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
@@ -25,6 +26,9 @@ import okhttp3.internal.wait
 import org.eclipse.paho.client.mqttv3.*
 import org.json.JSONException
 import org.json.JSONObject
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class CaptureFoodItemActivity : AppCompatActivity() {
     private lateinit var btnCapture: Button
@@ -40,6 +44,7 @@ class CaptureFoodItemActivity : AppCompatActivity() {
     private var currentWeight: Float = 0.0f
     private lateinit var ivFoodImage: ImageView
     private var capturedImageData: String = ""
+    private lateinit var etMealName: EditText
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -61,6 +66,7 @@ class CaptureFoodItemActivity : AppCompatActivity() {
         ivFoodImage = findViewById(R.id.ivFoodImage)
         btnAddAnotherItem = findViewById(R.id.btnAddAnotherItem)
         btnFinishMeal = findViewById(R.id.btnFinishMeal)
+        etMealName = findViewById(R.id.etMealName)
     }
 
     private fun setListeners() {
@@ -158,8 +164,13 @@ class CaptureFoodItemActivity : AppCompatActivity() {
                 Toast.makeText(this, "Error: User not logged in", Toast.LENGTH_SHORT).show()
                 return@getCurrentUser
             }
+            val userInputMealName = etMealName.text.toString().trim()
+            val mealName = if (userInputMealName.isNotEmpty()) {
+                "$userInputMealName - ${getCurrentDateTime()}"
+            } else {
+                "Meal ${getCurrentDateTime()}"
+            }
 
-            val mealName = "Meal ${System.currentTimeMillis()}"
             val totalCalories = mealItems.sumOf { it.calories.toDouble() }.toFloat()
             val totalNutritiveValues = calculateTotalNutritiveValues()
 
@@ -183,7 +194,10 @@ class CaptureFoodItemActivity : AppCompatActivity() {
             }
         }
     }
-
+    private fun getCurrentDateTime(): String {
+        val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+        return sdf.format(Date())
+    }
 
     private fun updateNutritionInfo(nutritiveValues: NutritiveValues, calories: Float) {
         tvNutrition.text = """

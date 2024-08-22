@@ -28,18 +28,29 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"/>
+
     <ImageView
         android:id="@+id/ivFoodImage"
         android:layout_width="match_parent"
         android:layout_height="200dp"
         android:scaleType="centerCrop"
         android:layout_marginTop="16dp"/>
+
     <TextView
         android:id="@+id/tvNutrition"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:textSize="14sp" />
+
+    <EditText
+        android:id="@+id/etMealName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Enter meal name (optional)"
+        android:layout_marginTop="16dp"
+        android:inputType="text"
+        android:maxLines="1" />
 
     <Button
         android:id="@+id/btnAddAnotherItem"
