@@ -162,14 +162,12 @@ object FirebaseManager {
         val dailyProtein = (dailyCalories * 0.3 / 4).toFloat()
         val dailyFat = (dailyCalories * 0.3 / 9).toFloat()
         val dailyCarbs = (dailyCalories * 0.4 / 4).toFloat()
-        val dailyVitamins = 100f // Placeholder value, should be calculated based on specific vitamins
 
         val updatedUser = user.copy(
             dailyCalories = dailyCalories,
             dailyProtein = dailyProtein,
             dailyFat = dailyFat,
             dailyCarbs = dailyCarbs,
-            dailyVitamins = dailyVitamins
         )
 
         db.collection("users").document(user.uid).set(updatedUser)

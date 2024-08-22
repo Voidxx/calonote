@@ -91,14 +91,6 @@
             android:orientation="horizontal"
             android:layout_marginBottom="16dp">
 
-            <!-- Vitamins -->
-            <include layout="@layout/nutrition_progress_item"
-                android:id="@+id/vitaminsLayout"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1" />
-
-            <!-- Empty space for alignment -->
             <View
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
