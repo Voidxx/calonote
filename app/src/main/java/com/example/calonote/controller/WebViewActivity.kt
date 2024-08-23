@@ -40,6 +40,7 @@ class WebViewActivity : AppCompatActivity() {
     }
 
     override fun onBackPressed() {
+        super.onBackPressed()
         setResult(Activity.RESULT_OK)
         Handler(Looper.getMainLooper()).postDelayed({
             finish()

@@ -120,7 +120,7 @@ class AddMealActivity : AppCompatActivity() {
                 mqttManager.unsubscribe("esp32cam/ping")
                 setUIEnabled(true)
             }
-        }, 10000) // 10 second timeout
+        }, 10000)
     }
 
     private fun handleEsp32PingResponse(message: String) {
@@ -353,7 +353,7 @@ class AddMealActivity : AppCompatActivity() {
                 Handler(Looper.getMainLooper()).postDelayed({
                     updateConnectionStatus()
                     connectToDevices()
-                }, 5000) // Wait 10 seconds before reconnecting
+                }, 5000)
             }
         }
     }
