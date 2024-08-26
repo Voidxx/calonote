@@ -29,6 +29,10 @@
 
             initializeViews()
 
+            updateUserInfo()
+        }
+
+        private fun updateUserInfo() {
             FirebaseManager.getCurrentUser { user ->
                 if (user != null) {
                     tvWelcome.text = "Welcome, ${user.username}"
@@ -98,5 +102,10 @@
         }
         fun openUserProfileActivity(view: View) {
             startActivity(Intent(this, UserProfileActivity::class.java))
+        }
+
+        override fun onResume() {
+            super.onResume()
+            updateUserInfo()
         }
     }
