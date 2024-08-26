@@ -36,6 +36,14 @@
         android:scaleType="centerCrop"
         android:layout_marginTop="16dp"/>
 
+    <Button
+        android:id="@+id/btnConfirmItem"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Confirm Item"
+        android:layout_marginTop="16dp"
+        android:enabled="false"/>
+    
     <TextView
         android:id="@+id/tvNutrition"
         android:layout_width="wrap_content"

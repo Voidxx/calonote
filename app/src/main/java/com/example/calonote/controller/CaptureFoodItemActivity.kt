@@ -8,6 +8,7 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
@@ -45,6 +46,8 @@ class CaptureFoodItemActivity : AppCompatActivity() {
     private lateinit var ivFoodImage: ImageView
     private var capturedImageData: String = ""
     private lateinit var etMealName: EditText
+    private lateinit var btnConfirmItem: Button
+    private var currentMealItem: MealItem? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -67,12 +70,14 @@ class CaptureFoodItemActivity : AppCompatActivity() {
         btnAddAnotherItem = findViewById(R.id.btnAddAnotherItem)
         btnFinishMeal = findViewById(R.id.btnFinishMeal)
         etMealName = findViewById(R.id.etMealName)
+        btnConfirmItem = findViewById(R.id.btnConfirmItem)
     }
 
     private fun setListeners() {
         btnCapture.setOnClickListener { captureFood() }
         btnAddAnotherItem.setOnClickListener { addAnotherItem() }
         btnFinishMeal.setOnClickListener { finishMeal() }
+        btnConfirmItem.setOnClickListener { confirmItem() }
     }
 
     private fun connectMqtt() {
@@ -90,6 +95,7 @@ class CaptureFoodItemActivity : AppCompatActivity() {
     private fun captureFood() {
         weightReceived = false
         currentWeight = 0.0f
+        currentMealItem = null
         Log.d("CaptureFoodItemActivity", "Sending weight request")
         mqttManager.subscribe("esp32/weight", 0) { _, message ->
             handleWeightMessage(message.toString())
@@ -150,13 +156,57 @@ class CaptureFoodItemActivity : AppCompatActivity() {
 
                 mealItems.add(mealItem)
                 updateNutritionInfo(nutritiveValues, calories)
-                updateUI()
+                handleConfidence(confidence)
 
             } catch (e: Exception) {
                 Log.e("CaptureFoodItemActivity", "Error processing prediction", e)
             }
         }
     }
+
+    private fun handleConfidence(confidence: Double) {
+        when {
+            confidence < 0.5 -> {
+                Toast.makeText(this, "The device probably cannot recognize this food. Please try again.", Toast.LENGTH_LONG).show()
+                btnConfirmItem.isEnabled = false
+            }
+            confidence < 0.75 -> {
+                Toast.makeText(this, "Please shift the food around for a clearer view and try again.", Toast.LENGTH_LONG).show()
+                btnConfirmItem.isEnabled = true
+            }
+            else -> {
+                Toast.makeText(this, "Food recognized with high confidence. Is this correct?", Toast.LENGTH_LONG).show()
+                btnConfirmItem.isEnabled = true
+            }
+        }
+    }
+
+    private fun confirmItem() {
+        AlertDialog.Builder(this)
+            .setTitle("Confirm Food Item")
+            .setMessage("Is the predicted food item correct?")
+            .setPositiveButton("Yes") { _, _ ->
+                currentMealItem?.let { mealItems.add(it) }
+                updateUI()
+                resetCapture()
+            }
+            .setNegativeButton("No") { _, _ ->
+                Toast.makeText(this, "Please capture the food item again", Toast.LENGTH_SHORT).show()
+                resetCapture()
+            }
+            .show()
+    }
+
+    private fun resetCapture() {
+        currentMealItem = null
+        tvWeight.text = ""
+        tvFoodName.text = ""
+        tvCalories.text = ""
+        tvNutrition.text = ""
+        ivFoodImage.setImageDrawable(null)
+        btnConfirmItem.isEnabled = false
+    }
+
 
     private fun finishMeal() {
         FirebaseManager.getCurrentUser { user ->
@@ -222,20 +272,17 @@ class CaptureFoodItemActivity : AppCompatActivity() {
     }
 
     private fun addAnotherItem() {
-        tvWeight.text = ""
-        tvFoodName.text = ""
-        tvCalories.text = ""
-        tvNutrition.text = ""
+        resetCapture()
     }
-
-
 
     private fun updateUI() {
         btnAddAnotherItem.isEnabled = mealItems.isNotEmpty()
         btnFinishMeal.isEnabled = mealItems.isNotEmpty()
+        btnConfirmItem.isEnabled = currentMealItem != null
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        mqttManager.disconnect()
     }
 }
