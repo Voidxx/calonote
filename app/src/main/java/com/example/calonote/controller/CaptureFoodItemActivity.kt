@@ -168,7 +168,7 @@ class CaptureFoodItemActivity : AppCompatActivity() {
         when {
             confidence < 0.5 -> {
                 Toast.makeText(this, "The device probably cannot recognize this food. Please try again.", Toast.LENGTH_LONG).show()
-                btnConfirmItem.isEnabled = false
+                btnConfirmItem.isEnabled = true
             }
             confidence < 0.75 -> {
                 Toast.makeText(this, "Please shift the food around for a clearer view and try again.", Toast.LENGTH_LONG).show()
