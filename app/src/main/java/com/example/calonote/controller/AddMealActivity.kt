@@ -289,7 +289,7 @@ class AddMealActivity : AppCompatActivity() {
                 updateStatusText("Sent calibration request to ESP32")
                 showConfirmationPrompt { confirmed ->
                     if (confirmed) {
-                        mqttManager.publish("esp32/calibrate/confirm", "confirm")
+                        mqttManager.publish("esp32/calibrate", "confirm")
                         updateStatusText("Sent calibration confirmation to ESP32")
                     } else {
                         updateStatusText("Calibration cancelled")
